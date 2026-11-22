@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CLD FINANCE</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #0b0f19;
+      color: #ffffff;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+    .container {
+      width: 100%;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+    .card {
+      width: 100%;
+      background: #131a2a;
+      border: 1px solid #232e47;
+      border-radius: 14px;
+      padding: 18px;
+      margin-bottom: 16px;
+    }
+    h3 {
+      margin: 0 0 10px 0;
+      font-size: 17px;
+      color: #f3ba2f;
+    }
+    p.desc {
+      font-size: 13px;
+      color: #9aa5b1;
+      margin: 0 0 12px 0;
+      line-height: 1.45;
+    }
+    label {
+      display: block;
+      font-size: 12px;
+      color: #cbd2d9;
+      margin-bottom: 5px;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #232e47;
+      background: #0b0f19;
+      color: #ffffff;
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+    .btn-gold {
+      width: 100%;
+      background: #f3ba2f;
+      color: #0b0f19;
+      border: none;
+      padding: 12px;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .btn-green {
+      display: block;
+      width: 100%;
+      text-align: center;
+      background: #00d084;
+      color: #0b0f19;
+      text-decoration: none;
+      padding: 11px;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 14px;
+    }
+    .btn-small {
+      background: #232e47;
+      color: #f3ba2f;
+      border: none;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .info-box {
+      background: #0b0f19;
+      border: 1px solid #232e47;
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 12px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .task-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      background: #0b0f19;
+      border: 1px solid #232e47;
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+    .task-btn {
+      border: none;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 13px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .badge {
+      background: #232e47;
+      color: #f3ba2f;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .status-msg {
+      margin-top: 8px;
+      font-size: 13px;
+    }
+  </style>
+
+  <!-- Firebase Compat SDK (compatible avec les scripts classiques) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+</head>
+<body>
+  <div class="container">
+
+    <!-- EN-TÊTE SOLDE & VIP (SYNCHRONISÉ AVEC LE DIRECTEUR) -->
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <h3 style="margin:0;">💎 CLD FINANCE</h3>
+        <span id="member-badge" class="badge">Invité</span>
+      </div>
+      <div class="info-box" style="margin-bottom:0;">
+        <div>Membre : <strong id="ui-member-name">Non inscrit</strong></div>
+        <div>Niveau VIP : <strong id="ui-vip-level" style="color:#f3ba2f;">Aucun</strong></div>
+        <div>Solde actuel : <strong id="ui-balance" style="color:#00d084;">0.00</strong></div>
+        <div>Bonus dépôt actif : <strong id="ui-bonus-rate" style="color:#f3ba2f;">+25%</strong></div>
+      </div>
+    </div>
+
+    <!-- 1. INSCRIPTION -->
+    <div class="card" id="register-section">
+      <h3>📝 Inscription Membre</h3>
+      <p class="desc">Créez votre compte pour accéder aux packs VIP, valider vos <strong>2 tâches quotidiennes</strong> et retirer vos gains en <strong>BNB</strong>.</p>
+
+      <label for="reg-name">Nom complet ou pseudo</label>
+      <input type="text" id="reg-name" placeholder="Ex: Claude Amouzou" />
+
+      <label for="reg-email">Adresse e-mail</label>
+      <input type="email" id="reg-email" placeholder="exemple@mail.com" />
+
+      <label for="reg-password">Mot de passe</label>
+      <input type="password" id="reg-password" placeholder="Minimum 4 caractères" />
+
+      <button class="btn-gold" onclick="registerClient()">S'inscrire</button>
+      <div id="reg-status" class="status-msg"></div>
+    </div>
+
+    <!-- 2. DÉPÔT & CALCUL BONUS DYNAMIQUE -->
+    <div class="card" id="deposit-section">
+      <h3>💳 Dépôt & Bonus</h3>
+      <p class="desc">Le pourcentage de bonus est synchronisé automatiquement depuis l'espace Directeur.</p>
+
+      <label for="deposit-vip-select">Choisir le pack VIP</label>
+      <select id="deposit-vip-select" onchange="updateDepositPreview()"></select>
+
+      <label for="deposit-amount">Montant du dépôt</label>
+      <input type="number" id="deposit-amount" placeholder="Ex: 20" oninput="updateDepositPreview()" />
+
+      <div class="info-box">
+        <div>Bonus (<span id="preview-bonus-pct">25</span>%) : <strong id="preview-bonus-val" style="color:#f3ba2f;">0.00</strong></div>
+        <div>Total crédité : <strong id="preview-total-val" style="color:#00d084;">0.00</strong></div>
+      </div>
+
+      <button class="btn-gold" onclick="submitDepositRequest()">Déclarer le dépôt</button>
+      <div id="deposit-status" class="status-msg"></div>
+    </div>
+
+    <!-- 3. TÂCHES QUOTIDIENNES (2 TÂCHES / JOUR) -->
+    <div class="card" id="daily-tasks-section">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <h3 style="margin:0;">📋 Tâches Quotidiennes</h3>
+        <span id="task-counter-badge" class="badge">0 / 2 Tâches</span>
+      </div>
+      <p class="desc">Validez la <strong>Tâche 1</strong> puis la <strong>Tâche 2</strong> chaque jour pour recevoir votre commission journalière selon votre VIP.</p>
+
+      <div class="info-box">
+        <div>Gain journalier (après 2 tâches) : <strong id="ui-daily-reward" style="color:#00d084;">0.00</strong></div>
+      </div>
+
+      <div class="task-row">
+        <div>
+          <div style="font-weight:bold; font-size:14px;">Tâche 1 : Vérification d'opération</div>
+          <div style="font-size:12px; color:#9aa5b1;">Étape 1 sur 2</div>
+        </div>
+        <button id="btn-task-1" class="task-btn" onclick="runTask(1)">Exécuter</button>
+      </div>
+
+      <div class="task-row" style="margin-bottom:0;">
+        <div>
+          <div style="font-weight:bold; font-size:14px;">Tâche 2 : Validation de commission</div>
+          <div style="font-size:12px; color:#9aa5b1;">Débloque le gain du jour</div>
+        </div>
+        <button id="btn-task-2" class="task-btn" onclick="runTask(2)" disabled>Verrouillée</button>
+      </div>
+
+      <div id="task-status" class="status-msg"></div>
+    </div>
+
+    <!-- 4. RETRAIT PAR BNB (BEP20) -->
+    <div class="card" id="bnb-withdraw-section">
+      <h3>💸 Retrait en BNB (BEP20)</h3>
+      <p class="desc">Recevez vos gains directement sur votre portefeuille <strong>BNB Smart Chain (BEP20)</strong>.</p>
+
+      <label for="withdraw-bnb-address">Adresse BNB BEP20 (commence par 0x...)</label>
+      <input type="text" id="withdraw-bnb-address" placeholder="Ex: 0x71C...89A" />
+
+      <label for="withdraw-bnb-amount">Montant à retirer</label>
+      <input type="number" id="withdraw-bnb-amount" placeholder="Montant" />
+
+      <button class="btn-gold" onclick="requestBnbWithdraw()">Retirer en BNB</button>
+      <div id="withdraw-status" class="status-msg"></div>
+    </div>
+
+    <!-- 5. SERVICE CLIENT -->
+    <div class="card" id="customer-service-section" style="margin-bottom:0;">
+      <h3>🎧 Service Client</h3>
+      <p class="desc">Une question sur votre dépôt, votre VIP ou un retrait BNB ? Contactez le support :</p>
+      <div style="display:flex; justify-content:space-between; align-items:center; background:#0b0f19; border:1px solid #232e47; border-radius:8px; padding:10px 12px; margin-bottom:10px;">
+        <span id="ui-support-email" style="font-size:13px; font-weight:bold;">cldfinance79@gmail.com</span>
+        <button class="btn-small" onclick="copySupportMail()">Copier</button>
+      </div>
+      <a id="ui-support-mailto" href="mailto:cldfinance79@gmail.com?subject=Support%20CLD%20FINANCE" class="btn-green">
+        ✉️ Contacter le Service Client
+      </a>
+    </div>
+
+  </div>
+
+  <script>
+    // REMPLACEZ PAR LA CONFIGURATION FIREBASE DE VOTRE PROJET (IDENTIQUE À CLD_Director)
+    const FIREBASE_CONFIG = {
+      apiKey: "VOTRE_API_KEY",
+      authDomain: "VOTRE_PROJET.firebaseapp.com",
+      databaseURL: "https://VOTRE_PROJET-default-rtdb.firebaseio.com",
+      projectId: "VOTRE_PROJET",
+      storageBucket: "VOTRE_PROJET.appspot.com",
+      messagingSenderId: "VOTRE_SENDER_ID",
+      appId: "VOTRE_APP_ID"
+    };
+
+    let db = null;
+    if (FIREBASE_CONFIG.apiKey !== "VOTRE_API_KEY") {
+      if (!firebase.apps.length) {
+        firebase.initializeApp(FIREBASE_CONFIG);
+      }
+      db = firebase.database();
+    }
+
+    // Paramètres par défaut (écrasés automatiquement dès que le Directeur modifie settings/platform)
+    let platformSettings = {
+      depositBonusPercent: 25,
+      supportEmail: "cldfinance79@gmail.com",
+      vipPlans: {
+        "VIP 1": { minDeposit: 20, dailyGain: 2.5 },
+        "VIP 2": { minDeposit: 50, dailyGain: 7.0 },
+        "VIP 3": { minDeposit: 100, dailyGain: 15.0 },
+        "VIP 4": { minDeposit: 300, dailyGain: 50.0 }
+      }
+    };
+
+    let currentUser = {
+      uid: localStorage.getItem("cld_uid") || "",
+      name: localStorage.getItem("cld_name") || "",
+      email: localStorage.getItem("cld_email") || "",
+      vip: localStorage.getItem("cld_vip") || "VIP 1",
+      balance: parseFloat(localStorage.getItem("cld_balance") || "0"),
+      tasksDone: parseInt(localStorage.getItem("cld_tasks_done") || "0", 10),
+      lastTaskDate: localStorage.getItem("cld_last_task_date") || ""
+    };
+
+    function getTodayStr() {
+      return new Date().toISOString().split("T")[0];
+    }
+
+    function syncDailyResetLocal() {
+      const today = getTodayStr();
+      if (currentUser.lastTaskDate !== today) {
+        currentUser.tasksDone = 0;
+        currentUser.lastTaskDate = today;
+        localStorage.setItem("cld_tasks_done", "0");
+        localStorage.setItem("cld_last_task_date", today);
+        if (db && currentUser.uid) {
+          db.ref("users/" + currentUser.uid).update({
+            tasksDone: 0,
+            lastTaskDate: today
+          });
+        }
+      }
+    }
+
+    function renderVipOptions() {
+      const select = document.getElementById("deposit-vip-select");
+      const previous = select.value || currentUser.vip;
+      select.innerHTML = "";
+      Object.keys(platformSettings.vipPlans).forEach((vipKey) => {
+        const plan = platformSettings.vipPlans[vipKey];
+        const opt = document.createElement("option");
+        opt.value = vipKey;
+        opt.textContent = `${vipKey} (Dépôt min: ${plan.minDeposit} | Gain/jour: ${plan.dailyGain})`;
+        select.appendChild(opt);
+      });
+      if (platformSettings.vipPlans[previous]) {
+        select.value = previous;
+      }
+      updateDepositPreview();
+    }
+
+    function updateDepositPreview() {
+      const amount = parseFloat(document.getElementById("deposit-amount").value) || 0;
+      const pct = parseFloat(platformSettings.depositBonusPercent) || 0;
+      const bonus = amount * (pct / 100);
+      const total = amount + bonus;
+
+      document.getElementById("ui-bonus-rate").textContent = `+${pct}%`;
+      document.getElementById("preview-bonus-pct").textContent = pct;
+      document.getElementById("preview-bonus-val").textContent = bonus.toFixed(2);
+      document.getElementById("preview-total-val").textContent = total.toFixed(2);
+    }
+
+    function renderAllUI() {
+      syncDailyResetLocal();
+
+      const hasAccount = Boolean(currentUser.name && currentUser.email);
+      document.getElementById("member-badge").textContent = hasAccount ? "Actif" : "Invité";
+      document.getElementById("ui-member-name").textContent = hasAccount ? `${currentUser.name} (${currentUser.email})` : "Non inscrit";
+      document.getElementById("ui-vip-level").textContent = currentUser.vip || "Aucun";
+      document.getElementById("ui-balance").textContent = (parseFloat(currentUser.balance) || 0).toFixed(2);
+
+      const plan = platformSettings.vipPlans[currentUser.vip] || { dailyGain: 0 };
+      document.getElementById("ui-daily-reward").textContent = `${Number(plan.dailyGain || 0).toFixed(2)} (après 2 tâches)`;
+
+      // Service client synchronisé depuis le Directeur
+      const mail = platformSettings.supportEmail || "cldfinance79@gmail.com";
+      document.getElementById("ui-support-email").textContent = mail;
+      document.getElementById("ui-support-mailto").href = `mailto:${encodeURIComponent(mail)}?subject=Support%20CLD%20FINANCE`;
+
+      // État des 2 tâches quotidiennes
+      const done = currentUser.tasksDone || 0;
+      document.getElementById("task-counter-badge").textContent = `${done} / 2 Tâches`;
+
+      const btn1 = document.getElementById("btn-task-1");
+      const btn2 = document.getElementById("btn-task-2");
+
+      if (done === 0) {
+        btn1.disabled = false;
+        btn1.textContent = "Exécuter";
+        btn1.style.background = "#f3ba2f";
+        btn1.style.color = "#0b0f19";
+
+        btn2.disabled = true;
+        btn2.textContent = "Verrouillée";
+        btn2.style.background = "#232e47";
+        btn2.style.color = "#7b8794";
+      } else if (done === 1) {
+        btn1.disabled = true;
+        btn1.textContent = "Faite ✓";
+        btn1.style.background = "#00d084";
+        btn1.style.color = "#0b0f19";
+
+        btn2.disabled = false;
+        btn2.textContent = "Exécuter";
+        btn2.style.background = "#f3ba2f";
+        btn2.style.color = "#0b0f19";
+      } else {
+        btn1.disabled = true;
+        btn1.textContent = "Faite ✓";
+        btn1.style.background = "#00d084";
+        btn1.style.color = "#0b0f19";
+
+        btn2.disabled = true;
+        btn2.textContent = "Faite ✓";
+        btn2.style.background = "#00d084";
+        btn2.style.color = "#0b0f19";
+      }
+
+      renderVipOptions();
+    }
+
+    function listenToDirectorChanges() {
+      if (!db) return;
+
+      // Écoute en temps réel des modifications du Directeur sur les paramètres (bonus, VIP, gains, e-mail)
+      db.ref("settings/platform").on("value", (snap) => {
+        if (snap.exists()) {
+          const data = snap.val();
+          platformSettings = {
+            ...platformSettings,
+            ...data,
+            vipPlans: data.vipPlans || platformSettings.vipPlans
+          };
+          renderAllUI();
+        }
+      });
+
+      // Écoute en temps réel de la fiche du client (solde, niveau VIP modifié par le Directeur, tâches)
+      if (currentUser.uid) {
+        db.ref("users/" + currentUser.uid).on("value", (snap) => {
+          if (snap.exists()) {
+            const u = snap.val();
+            currentUser = {
+              ...currentUser,
+              ...u,
+              balance: parseFloat(u.balance || 0),
+              tasksDone: parseInt(u.tasksDone || 0, 10)
+            };
+            localStorage.setItem("cld_vip", currentUser.vip);
+            localStorage.setItem("cld_balance", String(currentUser.balance));
+            localStorage.setItem("cld_tasks_done", String(currentUser.tasksDone));
+            localStorage.setItem("cld_last_task_date", currentUser.lastTaskDate || getTodayStr());
+            renderAllUI();
+          }
+        });
+      }
+    }
+
+    function registerClient() {
+      const name = document.getElementById("reg-name").value.trim();
+      const email = document.getElementById("reg-email").value.trim();
+      const password = document.getElementById("reg-password").value.trim();
+      const statusEl = document.getElementById("reg-status");
+
+      if (!name || !email || password.length < 4) {
+        statusEl.style.color = "#ff6b6b";
+        statusEl.textContent = "Remplissez tous les champs (mot de passe : 4 caractères minimum).";
+        return;
+      }
+
+      const uid = currentUser.uid || ("user_" + email.toLowerCase().replace(/[^a-z0-9]/g, "_"));
+      currentUser = {
+        uid,
+        name,
+        email,
+        vip: currentUser.vip || "VIP 1",
+        balance: currentUser.balance || 0,
+        tasksDone: 0,
+        lastTaskDate: getTodayStr()
+      };
+
+      localStorage.setItem("cld_uid", uid);
+      localStorage.setItem("cld_name", name);
+      localStorage.setItem("cld_email", email);
+      localStorage.setItem("cld_vip", currentUser.vip);
+      localStorage.setItem("cld_balance", String(currentUser.balance));
+      localStorage.setItem("cld_tasks_done", "0");
+      localStorage.setItem("cld_last_task_date", currentUser.lastTaskDate);
+
+      if (db) {
+        db.ref("users/" + uid).set({
+          uid,
+          name,
+          email,
+          vip: currentUser.vip,
+          balance: currentUser.balance,
+          tasksDone: 0,
+          lastTaskDate: currentUser.lastTaskDate,
+          updatedAt: Date.now()
+        });
+        listenToDirectorChanges();
+      }
+
+      statusEl.style.color = "#00d084";
+      statusEl.textContent = "Inscription enregistrée avec succès.";
+      renderAllUI();
+    }
+
+    function submitDepositRequest() {
+      const selectedVip = document.getElementById("deposit-vip-select").value;
+      const amount = parseFloat(document.getElementById("deposit-amount").value);
+      const statusEl = document.getElementById("deposit-status");
+
+      if (isNaN(amount) || amount <= 0) {
+        statusEl.style.color = "#ff6b6b";
+        statusEl.textContent = "Entrez un montant de dépôt valide.";
+        return;
+      }
+
+      const pct = parseFloat(platformSettings.depositBonusPercent) || 0;
+      const bonus = amount * (pct / 100);
+      const total = amount + bonus;
+
+      const payload = {
+        uid: currentUser.uid || "guest",
+        memberName: currentUser.name || "Invité",
+        memberEmail: currentUser.email || "",
+        vipRequested: selectedVip,
+        amount,
+        bonusPercent: pct,
+        bonusAmount: bonus,
+        totalWithBonus: total,
+        status: "pending",
+        createdAt: Date.now()
+      };
+
+      if (db) {
+        db.ref("deposits").push(payload);
+      }
+
+      statusEl.style.color = "#00d084";
+      statusEl.textContent = `Demande envoyée au Directeur (${selectedVip}, total avec +${pct}% : ${total.toFixed(2)}).`;
+    }
+
+    function runTask(taskNum) {
+      syncDailyResetLocal();
+      const statusEl = document.getElementById("task-status");
+      const plan = platformSettings.vipPlans[currentUser.vip];
+
+      if (!plan || Number(plan.dailyGain) <= 0) {
+        statusEl.style.color = "#ff6b6b";
+        statusEl.textContent = "Aucun gain VIP actif pour ce compte.";
+        return;
+      }
+
+      if (taskNum === 1 && currentUser.tasksDone === 0) {
+        currentUser.tasksDone = 1;
+        localStorage.setItem("cld_tasks_done", "1");
+        if (db && currentUser.uid) {
+          db.ref("users/" + currentUser.uid).update({ tasksDone: 1 });
+        }
+        statusEl.style.color = "#f3ba2f";
+        statusEl.textContent = "Tâche 1/2 validée. Faites la Tâche 2 pour recevoir votre gain journalier.";
+        renderAllUI();
+      } else if (taskNum === 2 && currentUser.tasksDone === 1) {
+        const gain = parseFloat(plan.dailyGain) || 0;
+        currentUser.tasksDone = 2;
+        currentUser.balance = (parseFloat(currentUser.balance) || 0) + gain;
+        currentUser.lastTaskDate = getTodayStr();
+
+        localStorage.setItem("cld_tasks_done", "2");
+        localStorage.setItem("cld_balance", currentUser.balance.toFixed(2));
+        localStorage.setItem("cld_last_task_date", currentUser.lastTaskDate);
+
+        if (db && currentUser.uid) {
+          db.ref("users/" + currentUser.uid).update({
+            tasksDone: 2,
+            balance: Number(currentUser.balance.toFixed(2)),
+            lastTaskDate: currentUser.lastTaskDate
+          });
+        }
+
+        statusEl.style.color = "#00d084";
+        statusEl.textContent = `2/2 tâches terminées ! Commission journalière (+${gain.toFixed(2)}) ajoutée au solde.`;
+        renderAllUI();
+      }
+    }
+
+    function requestBnbWithdraw() {
+      const address = document.getElementById("withdraw-bnb-address").value.trim();
+      const amount = parseFloat(document.getElementById("withdraw-bnb-amount").value);
+      const statusEl = document.getElementById("withdraw-status");
+
+      if (!address.startsWith("0x") || address.length < 20) {
+        statusEl.style.color = "#ff6b6b";
+        statusEl.textContent = "Entrez une adresse BNB (BEP20) valide commençant par 0x.";
+        return;
+      }
+      if (isNaN(amount) || amount <= 0 || amount > currentUser.balance) {
+        statusEl.style.color = "#ff6b6b";
+        statusEl.textContent = "Montant invalide ou supérieur à votre solde disponible.";
+        return;
+      }
+
+      const withdrawal = {
+        uid: currentUser.uid || "guest",
+        memberName: currentUser.name || "Invité",
+        memberEmail: currentUser.email || "",
+        network: "BNB_BEP20",
+        bnbAddress: address,
+        amount,
+        status: "pending",
+        createdAt: Date.now()
+      };
+
+      if (db) {
+        db.ref("withdrawals").push(withdrawal);
+      }
+
+      statusEl.style.color = "#00d084";
+      statusEl.textContent = `Retrait de ${amount} en BNB (BEP20) envoyé vers ${address}.`;
+    }
+
+    function copySupportMail() {
+      const mail = document.getElementById("ui-support-email").textContent;
+      navigator.clipboard.writeText(mail);
+      alert("Adresse copiée : " + mail);
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      renderAllUI();
+      listenToDirectorChanges();
+    });
+  </script>
+</body>
+</html>
